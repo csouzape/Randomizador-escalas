@@ -104,6 +104,37 @@ def gerar_escala_contagem(nomes: List[str], protas_anteriores: List[str]) -> Dic
         escala[dia] = protas_disponiveis.pop(0)
     return escala
 
+def gerar_escalas_sem_sobreposicao(nomes: List[str], protas_anteriores: List[str]) -> Tuple[Dict[str, List[str]], Dict[str, List[str]], Dict[str, str]]:
+    escala_merenda = {}
+    escala_chaves = {}
+    escala_contagem = {}
+
+    for dia in DIAS_UTEIS:
+        nomes_disponiveis = nomes[:]
+        random.shuffle(nomes_disponiveis)
+
+        # Merenda
+        merenda = [nomes_disponiveis.pop(0) for _ in range(3)]
+        escala_merenda[dia] = merenda
+
+        # Chaves (sem os de merenda)
+        nomes_restantes = [n for n in nomes_disponiveis if n not in merenda]
+        if len(nomes_restantes) < 3:
+            nomes_restantes = [n for n in nomes if n not in merenda]
+            random.shuffle(nomes_restantes)
+        chaves = [nomes_restantes.pop(0) for _ in range(3)]
+        escala_chaves[dia] = chaves
+
+        # Contagem (sem os de merenda e chaves)
+        nomes_final = [n for n in nomes if n not in merenda and n not in chaves]
+        candidatos_contagem = [n for n in nomes_final if n not in protas_anteriores]
+        if not candidatos_contagem:
+            candidatos_contagem = nomes_final if nomes_final else nomes[:]
+        random.shuffle(candidatos_contagem)
+        escala_contagem[dia] = candidatos_contagem[0] if candidatos_contagem else nomes[0]
+
+    return escala_merenda, escala_chaves, escala_contagem
+
 def proxima_segunda() -> datetime.date:
     hoje = datetime.date.today()
     dias_para_segunda = (7 - hoje.weekday()) % 7
@@ -151,9 +182,7 @@ def menu_principal(nomes_limpos: List[str], nome_bruto_map: Dict[str, str]) -> N
         if escolha in ('1', '2'):
             protas_anteriores = ler_historico_escalas()
             protas_a_evitar = protas_anteriores if escolha == '2' else []
-            escala_merenda = gerar_escala_generica(nomes_limpos, 3)
-            escala_chaves = gerar_escala_generica(nomes_limpos, 3)
-            escala_contagem = gerar_escala_contagem(nomes_limpos, protas_a_evitar)
+            escala_merenda, escala_chaves, escala_contagem = gerar_escalas_sem_sobreposicao(nomes_limpos, protas_a_evitar)
             salvar_escala(data_inicio_escala_a_gerar, data_fim, escala_merenda, "MERENDA", PASTA_MERENDA, nome_bruto_map, datas_uteis)
             salvar_escala(data_inicio_escala_a_gerar, data_fim, escala_chaves, "CHAVES", PASTA_CHAVES, nome_bruto_map, datas_uteis)
             salvar_escala(data_inicio_escala_a_gerar, data_fim, escala_contagem, "CONTAGEM", PASTA_CONTAGEM, nome_bruto_map, datas_uteis)
